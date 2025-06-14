@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: A simple Notes API with IAM authorization
+
+Globals:
+  Function:
+    Timeout: 3
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+
+Resources:
+  NotesApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: NotesApi
+      StageName: Prod
+
+  NotesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: NotesFunction
+      CodeUri: notes/
+      Handler: app.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        NotesApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref NotesApiGateway
+            Path: /notes
+            Method: get
+            Auth:
+              AuthorizationType: AWS_IAM
+
+Outputs:
+  NotesApiEndpoint:
+    Description: "API Gateway endpoint URL for GET /notes"
+    Value: !Sub "https://${NotesApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod/notes"
