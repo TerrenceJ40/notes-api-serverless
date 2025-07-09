@@ -4,26 +4,46 @@ Description: A simple Notes API with IAM authorization
 
 Globals:
   Function:
-    Timeout: 3
+    Timeout: 10
     Runtime: python3.9
     Architectures:
       - x86_64
 
 Resources:
+  # ---------- API Gateway ----------
   NotesApiGateway:
     Type: AWS::Serverless::Api
     Properties:
       Name: NotesApi
       StageName: Prod
 
+  # ---------- DynamoDB ----------
+  NotesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: NotesTable
+      AttributeDefinitions:
+        - AttributeName: noteId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: noteId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # ---------- GET /notes ----------
   NotesFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: NotesFunction
       CodeUri: notes/
-      Handler: app.lambda_handler
+      Handler: create_note.lambda_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref NotesTable
       Policies:
         - AWSLambdaBasicExecutionRole
+        - DynamoDBReadPolicy:
+            TableName: !Ref NotesTable
       Events:
         NotesApi:
           Type: Api
@@ -34,7 +54,31 @@ Resources:
             Auth:
               AuthorizationType: AWS_IAM
 
+  # ---------- POST /notes ----------
+  CreateNoteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: CreateNoteFunction
+      CodeUri: notes/
+      Handler: create_note.lambda_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref NotesTable
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NotesTable
+      Events:
+        CreateNoteApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref NotesApiGateway
+            Path: /notes
+            Method: post
+            Auth:
+              AuthorizationType: AWS_IAM
+
 Outputs:
   NotesApiEndpoint:
-    Description: "API Gateway endpoint URL for GET /notes"
+    Description: "Base URL for the Notes API"
     Value: !Sub "https://${NotesApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod/notes"
