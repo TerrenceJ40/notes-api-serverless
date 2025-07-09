@@ -1,27 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: A simple Notes API with IAM authorization
+Description: Serverless Notes API – full CRUD with IAM auth
 
 Globals:
   Function:
-    Timeout: 10
     Runtime: python3.9
-    Architectures:
-      - x86_64
+    Architectures: [x86_64]
+    Timeout: 5
+    Environment:
+      Variables:
+        NOTES_TABLE: !Ref NotesTable
 
 Resources:
-  # ---------- API Gateway ----------
-  NotesApiGateway:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: NotesApi
-      StageName: Prod
-
-  # ---------- DynamoDB ----------
+# ---------- DATA ----------
   NotesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: NotesTable
       AttributeDefinitions:
         - AttributeName: noteId
           AttributeType: S
@@ -29,56 +23,113 @@ Resources:
         - AttributeName: noteId
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+      TableName: NotesTable
 
-  # ---------- GET /notes ----------
-  NotesFunction:
+# ---------- API ----------
+  NotesApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: NotesApi
+      StageName: Prod
+      EndpointConfiguration: REGIONAL
+
+# ---------- FUNCTIONS ----------
+  CreateNoteFn:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: NotesFunction
       CodeUri: notes/
       Handler: create_note.lambda_handler
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref NotesTable
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - DynamoDBReadPolicy:
-            TableName: !Ref NotesTable
-      Events:
-        NotesApi:
-          Type: Api
-          Properties:
-            RestApiId: !Ref NotesApiGateway
-            Path: /notes
-            Method: get
-            Auth:
-              AuthorizationType: AWS_IAM
-
-  # ---------- POST /notes ----------
-  CreateNoteFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: CreateNoteFunction
-      CodeUri: notes/
-      Handler: create_note.lambda_handler
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref NotesTable
       Policies:
         - AWSLambdaBasicExecutionRole
         - DynamoDBCrudPolicy:
             TableName: !Ref NotesTable
       Events:
-        CreateNoteApi:
+        Api:
           Type: Api
           Properties:
-            RestApiId: !Ref NotesApiGateway
+            RestApiId: !Ref NotesApi
             Path: /notes
-            Method: post
+            Method: POST
+            Auth:
+              AuthorizationType: AWS_IAM
+
+  GetNoteFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: notes/
+      Handler: get_note.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBReadPolicy:
+            TableName: !Ref NotesTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref NotesApi
+            Path: /notes/{id}
+            Method: GET
+            Auth:
+              AuthorizationType: AWS_IAM
+
+  ListNotesFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: notes/
+      Handler: list_notes.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBReadPolicy:
+            TableName: !Ref NotesTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref NotesApi
+            Path: /notes
+            Method: GET
+            Auth:
+              AuthorizationType: AWS_IAM
+
+  UpdateNoteFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: notes/
+      Handler: update_note.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NotesTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref NotesApi
+            Path: /notes/{id}
+            Method: PUT
+            Auth:
+              AuthorizationType: AWS_IAM
+
+  DeleteNoteFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: notes/
+      Handler: delete_note.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NotesTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref NotesApi
+            Path: /notes/{id}
+            Method: DELETE
             Auth:
               AuthorizationType: AWS_IAM
 
 Outputs:
-  NotesApiEndpoint:
-    Description: "Base URL for the Notes API"
-    Value: !Sub "https://${NotesApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod/notes"
+  ApiUrl:
+    Description: Invoke URL
+    Value: !Sub "https://${NotesApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
