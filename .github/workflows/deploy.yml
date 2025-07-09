@@ -18,11 +18,9 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v4
 
-    # 2. Install AWS SAM CLI (latest)
+    # 2. Install AWS SAM CLI 
     - name: Install SAM CLI
       uses: aws-actions/setup-sam@v2
-      with:
-        version: latest
 
     # 3. Configure AWS creds
     - name: Configure AWS credentials
