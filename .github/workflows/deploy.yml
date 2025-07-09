@@ -10,7 +10,7 @@ jobs:
 
     # 1. Set environment
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_REGION: us-east-1
       S3_BUCKET:  ${{ secrets.S3_BUCKET }}
       STACK_NAME: notes-api-stack
 
@@ -21,6 +21,7 @@ jobs:
     # 2. Install AWS SAM CLI 
     - name: Install SAM CLI
       uses: aws-actions/setup-sam@v2
+      with: version: 1.116.0
 
     # 3. Configure AWS creds
     - name: Configure AWS credentials
@@ -28,7 +29,7 @@ jobs:
       with:
         aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region:            ${{ env.AWS_REGION }}
+        aws-region:            us-east-1
 
     # 4. Build
     - name: Build Lambda & API
