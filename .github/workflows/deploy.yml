@@ -1,0 +1,59 @@
+name: CI/CD – SAM Notes API
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    # 1. Set environment
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_BUCKET:  ${{ secrets.S3_BUCKET }}
+      STACK_NAME: notes-api-stack
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    # 2. Install AWS SAM CLI (latest)
+    - name: Install SAM CLI
+      uses: aws-actions/setup-sam@v2
+      with:
+        version: latest
+
+    # 3. Configure AWS creds
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region:            ${{ env.AWS_REGION }}
+
+    # 4. Build
+    - name: Build Lambda & API
+      run: sam build
+
+    # 5. Package → upload artifacts to S3
+    - name: Package SAM template
+      run: |
+        sam package \
+          --s3-bucket "$S3_BUCKET" \
+          --output-template-file packaged.yaml
+
+    # 6. Deploy (auto-approve)
+    - name: Deploy stack
+      run: |
+        sam deploy \
+          --template-file packaged.yaml \
+          --stack-name "$STACK_NAME" \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --no-fail-on-empty-changeset \
+          --region "$AWS_REGION"
+
+    # 7. List endpoint
+    - name: Show API endpoints
+      run: |
+        sam list endpoints --stack-name "$STACK_NAME" --region "$AWS_REGION"
