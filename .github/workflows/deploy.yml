@@ -33,9 +33,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region:            us-east-1
 
-    # 4  Build Lambda & API (artifacts go to .aws-sam/)
-    - name: SAM build
-      run:     # 4  Build Lambda & API
+    # 4  Build Lambda & API
     - name: SAM build
       run: sam build --use-container
 
