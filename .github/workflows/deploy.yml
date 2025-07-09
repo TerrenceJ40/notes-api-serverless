@@ -35,7 +35,9 @@ jobs:
 
     # 4  Build Lambda & API (artifacts go to .aws-sam/)
     - name: SAM build
-      run: sam build
+      run:     # 4  Build Lambda & API
+    - name: SAM build
+      run: sam build --use-container
 
     # 5  Deploy the stack (SAM uploads artifacts to the S3 bucket automatically)
     - name: SAM deploy
