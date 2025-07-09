@@ -8,22 +8,24 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    # 1. Set environment
+    # Environment constants
     env:
-      AWS_REGION: us-east-1
+      AWS_REGION: us-east-1          # hard-coded
       S3_BUCKET:  ${{ secrets.S3_BUCKET }}
       STACK_NAME: notes-api-stack
 
     steps:
+    # 1  Checkout
     - name: Checkout source
       uses: actions/checkout@v4
 
-    # 2. Install AWS SAM CLI 
+    # 2  Install AWS SAM CLI
     - name: Install SAM CLI
       uses: aws-actions/setup-sam@v2
-      with: version: 1.116.0
+      with:
+        version: 1.116.0             # latest stable (pin for repeatability)
 
-    # 3. Configure AWS creds
+    # 3  Configure AWS credentials
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -31,28 +33,20 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region:            us-east-1
 
-    # 4. Build
-    - name: Build Lambda & API
+    # 4  Build Lambda & API (artifacts go to .aws-sam/)
+    - name: SAM build
       run: sam build
 
-    # 5. Package → upload artifacts to S3
-    - name: Package SAM template
-      run: |
-        sam package \
-          --s3-bucket "$S3_BUCKET" \
-          --output-template-file packaged.yaml
-
-    # 6. Deploy (auto-approve)
-    - name: Deploy stack
+    # 5  Deploy the stack (SAM uploads artifacts to the S3 bucket automatically)
+    - name: SAM deploy
       run: |
         sam deploy \
-          --template-file packaged.yaml \
           --stack-name "$STACK_NAME" \
+          --s3-bucket  "$S3_BUCKET" \
           --capabilities CAPABILITY_NAMED_IAM \
           --no-fail-on-empty-changeset \
           --region "$AWS_REGION"
 
-    # 7. List endpoint
+    # 6  List the live API endpoints
     - name: Show API endpoints
-      run: |
-        sam list endpoints --stack-name "$STACK_NAME" --region "$AWS_REGION"
+      run: sam list endpoints --stack-name "$STACK_NAME" --region "$AWS_REGION"
